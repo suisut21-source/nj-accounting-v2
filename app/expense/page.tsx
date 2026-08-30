@@ -1,232 +1,289 @@
 'use client';
 
-import { useState } from 'react';
-import { 
-  FiDollarSign, FiCalendar, FiTag, FiFileText, 
-  FiUploadCloud, FiCheckCircle, FiCreditCard, FiAlertCircle, FiHome 
-} from 'react-icons/fi';
+import { useState, useEffect } from 'react';
+import { Camera, Calendar, ArrowLeft, Check, X, FileText, AlertCircle, Upload } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ExpensePage() {
-  const [category, setCategory] = useState('ค่าวัตถุดิบ / ของสด');
-  const [paymentMethod, setPaymentMethod] = useState('เงินสด');
-  const [amount, setAmount] = useState('');
-  const [vendor, setVendor] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [note, setNote] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [formData, setFormData] = useState({
+    category: 'ค่าวัตถุดิบ / ของสด',
+    paymentMethod: 'เงินสด',
+    amount: '',
+    vendor: '',
+    date: new Date().toISOString().split('T')[0],
+    note: '',
+    receiptImage: null as string | null
+  });
 
-  // ฟังก์ชันกลับหน้าแรกแบบบังคับตรงๆ ไม่มีค้าง
-  const goHome = () => {
-    window.location.href = '/';
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem('expenseTransactions') || '[]');
+    setExpenses(saved);
+  }, []);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, receiptImage: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({
-      category,
-      paymentMethod,
-      amount: parseFloat(amount) || 0,
-      vendor,
-      date,
-      note
+    if (!formData.amount || Number(formData.amount) <= 0) {
+      alert('กรุณากรอกจำนวนเงินให้ถูกต้องครับพี่');
+      return;
+    }
+
+    const newExpense = {
+      ...formData,
+      id: Date.now(),
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [newExpense, ...expenses];
+    setExpenses(updated);
+    localStorage.setItem('expenseTransactions', JSON.stringify(updated));
+
+    setSuccessMessage('บันทึกรายจ่ายสำเร็จเรียบร้อยแล้วครับพี่! 🐾');
+    setTimeout(() => setSuccessMessage(''), 3000);
+
+    setFormData({
+      category: 'ค่าวัตถุดิบ / ของสด',
+      paymentMethod: 'เงินสด',
+      amount: '',
+      vendor: '',
+      date: new Date().toISOString().split('T')[0],
+      note: '',
+      receiptImage: null
     });
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      setAmount('');
-      setVendor('');
-      setNote('');
-    }, 3000);
   };
 
+  const categories = [
+    'ค่าวัตถุดิบ / ของสด',
+    'ค่าบรรจุภัณฑ์ / กล่อง',
+    'ค่าน้ำ / ค่าไฟ / ค่าเช่า',
+    'ค่าจ้างพนักงาน',
+    'อุปกรณ์ / เครื่องมือ',
+    'อื่นๆ'
+  ];
+
+  const paymentMethods = ['เงินสด', 'โอนผ่านบัญชี'];
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+    <div className="pb-20 max-w-3xl mx-auto font-sans p-4 sm:p-6">
+      
+      {/* กรอบการ์ดใหญ่รวมทั้งหมด (Main Container Card) */}
+      <div className="bg-white rounded-[2.55rem] p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-7 relative overflow-hidden">
         
-        {/* ส่วนหัว */}
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <button 
-              type="button"
-              onClick={goHome} 
-              className="p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors cursor-pointer flex items-center gap-1 text-sm font-medium"
-              title="กลับหน้าหลัก"
-            >
-              <FiHome size={20} className="text-rose-500" />
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <span className="p-2 bg-rose-100 text-rose-600 rounded-lg"><FiDollarSign size={20} /></span>
-                บันทึกรายจ่าย (เงินออก)
-              </h1>
-              <p className="text-sm text-gray-500">บันทึกค่าใช้จ่ายร้านค้าเพื่อใช้เป็นหลักฐานหักลดหย่อนภาษี</p>
-            </div>
-          </div>
-          <span className="text-2xl">🐕</span>
-        </div>
-
-        {/* 🐕 คำเตือนเรื่องใบเสร็จสุดน่ารัก */}
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-amber-800">
-          <FiAlertCircle size={22} className="text-amber-500 shrink-0 mt-0.5" />
-          <div className="text-sm font-medium">
-            🐕 พี่ๆ อย่าลืมใบเสร็จ หรือใบกำกับภาษีเวลาซื้อของนะครับ (สำคัญมากต่อการจ่ายภาษี!)
-          </div>
-        </div>
-
-        {success && (
-          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl flex items-center gap-3">
-            <FiCheckCircle size={24} className="text-emerald-500" />
-            <div>
-              <p className="font-semibold">บันทึกรายจ่ายสำเร็จแล้วครับพี่!</p>
-              <p className="text-sm">บันทึกข้อมูลและเก็บหลักฐานค่าใช้จ่ายเรียบร้อยครับ</p>
-            </div>
+        {/* Success Overlay */}
+        {successMessage && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-full flex items-center gap-2 shadow-lg z-50 animate-in slide-in-from-top-4">
+            <Check className="w-5 h-5" />
+            <span className="text-sm font-bold">{successMessage}</span>
           </div>
         )}
 
+        {/* Header Section */}
+        <div className="flex items-start justify-between border-b border-slate-100 pb-6">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="w-11 h-11 shrink-0 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center transition border border-slate-200 shadow-sm">
+              <ArrowLeft className="w-5 h-5 text-slate-600" />
+            </Link>
+            <div>
+              <h1 className="text-lg font-black text-slate-800 flex items-center gap-2 tracking-tight">
+                💸 บันทึกรายจ่าย (เงินออก) 🐕
+              </h1>
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                จดไว้จะได้ไม่ลืม หักลดหย่อนภาษีร้านได้ชัวร์! สู้ๆ นะครับพี่ 🐾
+              </p>
+            </div>
+          </div>
+          <span className="hidden sm:inline-flex px-3 py-1 bg-rose-50 border border-rose-200 text-rose-600 rounded-full text-xs font-bold">
+            รายจ่าย / ภาษี 🧾
+          </span>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* หมวดหมู่รายจ่าย */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-              <FiTag size={16} /> หมวดหมู่รายจ่าย
+
+          {/* Categories (Pill Buttons) */}
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-800">
+              🏷️ เลือกหมวดหมู่รายจ่าย 💸
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[
-                'ค่าวัตถุดิบ / ของสด', 
-                'ค่าบรรจุภัณฑ์ / กล่อง', 
-                'ค่าน้ำ / ค่าไฟ / ค่าเช่า', 
-                'ค่าจ้างพนักงาน', 
-                'อุปกรณ์ / เครื่องมือ',
-                'อื่นๆ'
-              ].map((cat) => (
-                <button
-                  type="button"
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={`py-2.5 px-3 rounded-xl border text-sm font-medium transition-all ${
-                    category === cat
-                      ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-2.5">
+              {categories.map((cat) => {
+                const isSelected = formData.category === cat;
+                return (
+                  <button
+                    type="button"
+                    key={cat}
+                    onClick={() => setFormData({ ...formData, category: cat })}
+                    className={`px-4 py-2 rounded-full text-xs font-bold transition border ${
+                      isSelected 
+                        ? 'bg-rose-500 text-white border-rose-600 shadow-sm' 
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-rose-50 hover:border-rose-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* ช่องทางการจ่ายเงิน (เงินสด / เงินโอน) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-              <FiCreditCard size={16} /> ช่องทางการจ่ายเงิน
+          {/* Input Box Area (กล่องเทา) */}
+          <div className="bg-slate-50 border border-slate-200/80 p-5 sm:p-6 rounded-2xl space-y-4">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-800">
+              💳 รายละเอียดการจ่ายเงิน 💵
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              {['เงินสด', 'เงินโอนผ่านบัญชี'].map((method) => (
-                <button
-                  type="button"
-                  key={method}
-                  onClick={() => setPaymentMethod(method)}
-                  className={`py-2.5 px-4 rounded-xl border text-sm font-medium transition-all ${
-                    paymentMethod === method
-                      ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  {method}
-                </button>
-              ))}
+
+            {/* Payment Method Toggle */}
+            <div className="flex gap-2">
+              {paymentMethods.map((method) => {
+                const isSelected = formData.paymentMethod === method;
+                return (
+                  <button
+                    type="button"
+                    key={method}
+                    onClick={() => setFormData({ ...formData, paymentMethod: method })}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition border ${
+                      isSelected
+                        ? 'bg-rose-100 text-rose-900 border-rose-300 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {method}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Amount */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-slate-500">ยอดเงินที่จ่าย 💸</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-slate-400 font-bold text-sm">฿</span>
+                  <input 
+                    type="number"
+                    step="any"
+                    required
+                    placeholder="0.00"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    className="w-full pl-8 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 font-bold focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 transition"
+                  />
+                </div>
+              </div>
+
+              {/* Vendor */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-slate-500">ชื่อร้านค้า / ผู้ขาย 🏪</label>
+                <input 
+                  type="text"
+                  placeholder="เช่น แม็คโคร, ตลาดสด..."
+                  value={formData.vendor}
+                  onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 transition"
+                />
+              </div>
             </div>
           </div>
 
-          {/* จำนวนเงิน */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              จำนวนเงิน (บาท) *
+          {/* Summary Card (กล่องสรุปยอดสีชมพูพาสเทล) */}
+          <div className="bg-rose-50 border border-rose-200/70 rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-xs font-bold text-rose-800/80 mb-1">🧾 ยอดรายจ่ายที่จะบันทึก</p>
+              <p className="text-2xl font-black text-rose-600">
+                ฿{formData.amount ? Number(formData.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-rose-100 flex items-center justify-center text-rose-500">
+              <Upload className="w-5 h-5" />
+            </div>
+          </div>
+
+          {/* Receipt Image Upload */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-800">
+              📸 แนบรูปใบเสร็จ / บิล 🧾
             </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400 font-bold">฿</span>
-              <input
-                type="number"
-                step="0.01"
-                required
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:bg-white outline-none text-lg font-semibold text-gray-800 transition-all"
+            <div className="border-2 border-dashed border-slate-200 hover:border-rose-400 bg-slate-50/50 rounded-2xl p-6 text-center transition cursor-pointer relative">
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleImageChange}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
+              {formData.receiptImage ? (
+                <div className="space-y-3">
+                  <img src={formData.receiptImage} alt="Receipt Preview" className="max-h-40 mx-auto rounded-xl shadow-sm border border-slate-200 object-contain" />
+                  <p className="text-xs font-bold text-rose-600">แตะเพื่อเปลี่ยนรูปภาพใหม่ 🔄</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 shadow-sm">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-600">อัปโหลดรูปบิล หรือถ่ายรูปเก็บไว้</p>
+                  <p className="text-[10px] text-slate-400">หลักฐานสำคัญสำหรับหักลดหย่อนภาษี</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Date & Note Inputs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                📅 วันที่ทำรายการ 🗓️
+              </label>
+              <input 
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 transition"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                📝 หมายเหตุ (ถ้ามี) 📝
+              </label>
+              <input 
+                type="text"
+                placeholder="โน้ตกันลืม..."
+                value={formData.note}
+                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400 transition"
               />
             </div>
           </div>
 
-          {/* ร้านค้า / ผู้ขาย (สำหรับออกใบกำกับภาษี) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              ชื่อร้านค้า / ผู้ขาย (สำหรับลงบัญชี)
-            </label>
-            <input
-              type="text"
-              value={vendor}
-              onChange={(e) => setVendor(e.target.value)}
-              placeholder="เช่น แม็คโคร, ตลาดสด, ร้านขายส่งกล่อง..."
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:bg-white outline-none text-gray-800 transition-all"
-            />
-          </div>
-
-          {/* วันที่ทำรายการ */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-              <FiCalendar size={16} /> วันที่จ่ายเงิน
-            </label>
-            <input
-              type="date"
-              required
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:bg-white outline-none text-gray-800 transition-all"
-            />
-          </div>
-
-          {/* หมายเหตุ */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-              <FiFileText size={16} /> หมายเหตุ / รายละเอียด
-            </label>
-            <textarea
-              rows={2}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="เช่น ซื้อวัตถุดิบทำของขายรอบสัปดาห์นี้..."
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:bg-white outline-none text-gray-800 transition-all resize-none"
-            />
-          </div>
-
-          {/* อัปโหลดใบเสร็จ / ใบกำกับภาษี */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              📸 แนบรูปใบเสร็จ / ใบกำกับภาษี <span className="text-rose-500 font-bold">*แนะนำให้ถ่ายเก็บไว้</span>
-            </label>
-            <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center hover:border-rose-500 transition-colors cursor-pointer bg-gray-50">
-              <FiUploadCloud className="mx-auto text-gray-400 mb-2" size={28} />
-              <p className="text-sm text-gray-600 font-medium">คลิกเพื่ออัปโหลดรูปภาพใบเสร็จ / บิลเงินสด</p>
-              <p className="text-xs text-gray-400 mt-1">รองรับไฟล์ JPG, PNG หรือ PDF</p>
-            </div>
-          </div>
-
-          {/* ปุ่มบันทึก */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
-            <button
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4 border-t border-slate-100">
+            <button 
               type="button"
-              onClick={goHome}
-              className="px-6 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 font-medium transition-colors cursor-pointer"
+              onClick={() => window.history.back()}
+              className="flex-1 py-3.5 bg-white border-2 border-rose-100 text-rose-500 rounded-xl font-bold text-sm hover:bg-rose-50 transition flex justify-center items-center gap-2 shadow-sm"
             >
-              ยกเลิก
+              ❌ ยกเลิก
             </button>
-            <button
+            <button 
               type="submit"
-              className="px-8 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold shadow-lg shadow-rose-500/20 transition-all cursor-pointer"
+              className="flex-[2] py-3.5 bg-rose-500 text-white rounded-xl font-bold text-sm hover:bg-rose-600 transition shadow-sm flex justify-center items-center gap-2"
             >
-              บันทึกรายจ่าย
+              🚀 บันทึกรายจ่ายเลย! 🐕
             </button>
           </div>
+
         </form>
 
       </div>
